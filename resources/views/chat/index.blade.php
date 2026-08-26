@@ -1,0 +1,4 @@
+@extends('layouts.app')
+@section('content')
+<div class="mx-auto max-w-3xl"><div class="mb-8"><p class="font-bold text-indigo-600">LAMII CHAT</p><h1 class="mt-2 text-4xl font-black">Your conversations</h1><p class="mt-2 text-slate-600">You can only chat with people you have both agreed to connect with.</p></div><div class="space-y-3">@forelse($conversations as $conversation)@php($person=$conversation->otherUser($user))<a href="{{ route('chat.show',$conversation) }}" class="block rounded-2xl border bg-white p-5 transition hover:shadow-sm"><p class="font-bold">{{ $person->name }}</p><p class="mt-1 text-sm text-slate-500">{{ $conversation->last_message_at?->diffForHumans() ?? 'Start the conversation' }}</p></a>@empty<div class="rounded-2xl border bg-white p-8 text-center text-slate-500">No conversations yet. Open your Connections and start chatting with someone.</div>@endforelse</div></div>
+@endsection
