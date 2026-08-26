@@ -1,0 +1,12 @@
+@extends('layouts.app')
+@section('content')
+@php($other=$conversation->otherUser(auth()->user()))
+<div class="mx-auto max-w-3xl"><div class="mb-4 flex items-center justify-between"><div><a href="{{ route('chat.index') }}" class="text-sm font-bold text-indigo-600">← Chats</a><h1 class="mt-2 text-2xl font-black">{{ $other->name }}</h1></div></div><div id="messages" class="min-h-[55vh] space-y-3 rounded-3xl border bg-white p-5">@foreach($messages as $message)<div data-message-id="{{ $message->id }}" class="flex {{ $message->sender_id===auth()->id()?'justify-end':'justify-start' }}"><div class="max-w-[80%] rounded-2xl px-4 py-3 {{ $message->sender_id===auth()->id()?'bg-indigo-600 text-white':'bg-slate-100 text-slate-900' }}">{{ $message->body }}</div></div>@endforeach</div><form id="message-form" class="mt-4 flex gap-2"><input id="message-input" maxlength="2000" autocomplete="off" class="min-w-0 flex-1 rounded-xl border px-4 py-3" placeholder="Write a message…"><button class="rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white">Send</button></form></div>
+<script>
+const form=document.getElementById('message-form'),input=document.getElementById('message-input'),box=document.getElementById('messages'),csrf=document.querySelector('meta[name="csrf-token"]')?.content,myId={{ auth()->id() }};
+function addMessage(m){if(document.querySelector('[data-message-id="'+m.id+'"]'))return;const wrap=document.createElement('div');wrap.dataset.messageId=m.id;wrap.className='flex '+(m.sender_id===myId?'justify-end':'justify-start');const bubble=document.createElement('div');bubble.className='max-w-[80%] rounded-2xl px-4 py-3 '+(m.sender_id===myId?'bg-indigo-600 text-white':'bg-slate-100 text-slate-900');bubble.textContent=m.body;wrap.appendChild(bubble);box.appendChild(wrap);box.scrollTop=box.scrollHeight;}
+form.addEventListener('submit',async e=>{e.preventDefault();const body=input.value.trim();if(!body)return;input.value='';const r=await fetch('{{ route('chat.messages.store',$conversation) }}',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':csrf},body:JSON.stringify({body})});if(!r.ok){input.value=body;return;}const data=await r.json();addMessage(data.message);});
+if(window.Echo){window.Echo.private('conversation.{{ $conversation->id }}').listen('.message.sent',addMessage);}
+box.scrollTop=box.scrollHeight;
+</script>
+@endsection
