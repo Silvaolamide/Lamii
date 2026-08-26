@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ConnectionController;
 use App\Http\Controllers\DiscoverController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\OnboardingController;
@@ -36,4 +37,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/discover/nearby', [DiscoverController::class, 'nearby'])->middleware('throttle:30,1')->name('discover.nearby');
     Route::post('/location', [LocationController::class, 'update'])->middleware('throttle:30,1')->name('location.update');
     Route::delete('/location', [LocationController::class, 'destroy'])->middleware('throttle:30,1')->name('location.destroy');
+
+    Route::get('/connections', [ConnectionController::class, 'index'])->name('connections.index');
+    Route::post('/connections/{user}', [ConnectionController::class, 'store'])->middleware('throttle:20,1')->name('connections.store');
+    Route::post('/connections/{connection}/accept', [ConnectionController::class, 'accept'])->name('connections.accept');
+    Route::post('/connections/{connection}/decline', [ConnectionController::class, 'decline'])->name('connections.decline');
 });
