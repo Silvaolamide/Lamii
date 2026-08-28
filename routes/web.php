@@ -18,8 +18,8 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('login.store');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
-    Route::get('/auth/{provider}/redirect', [AuthController::class, 'redirectToProvider'])->whereIn('provider', ['google', 'apple', 'x'])->name('social.redirect');
-    Route::match(['get', 'post'], '/auth/{provider}/callback', [AuthController::class, 'handleProviderCallback'])->whereIn('provider', ['google', 'apple', 'x'])->name('social.callback');
+    Route::get('/auth/{provider}/redirect', [AuthController::class, 'redirectToProvider'])->where('provider', 'google')->name('social.redirect');
+    Route::match(['get', 'post'], '/auth/{provider}/callback', [AuthController::class, 'handleProviderCallback'])->where('provider', 'google')->name('social.callback');
     Route::get('/forgot-password', [PasswordResetController::class, 'requestForm'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])->name('password.email');
     Route::get('/reset-password/{token}', [PasswordResetController::class, 'resetForm'])->name('password.reset');
