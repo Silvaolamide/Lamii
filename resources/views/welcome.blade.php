@@ -5,7 +5,7 @@
     <div class="relative max-w-3xl">
         <div class="mb-7 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[.18em] text-white/80">● Meet nearby · Stay in control</div>
         <h1 class="text-5xl font-black tracking-[-.04em] sm:text-7xl">People are closer<br><span class="text-indigo-300">than you think.</span></h1>
-        <p class="mt-6 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">Lamii helps you discover interesting people around you, connect when the feeling is mutual, and chat privately — without exposing your exact location.</p>
+        <p class="mt-6 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">Lami helps you discover interesting people around you, connect when the feeling is mutual, and chat privately — without exposing your exact location.</p>
         <div class="mt-9 flex flex-col gap-3 sm:flex-row"><a href="{{ route('register') }}" class="tap rounded-2xl bg-white px-7 py-4 text-center font-black text-slate-950 shadow-xl">Start discovering →</a><a href="{{ route('login') }}" class="tap rounded-2xl border border-white/15 bg-white/10 px-7 py-4 text-center font-black text-white">I already have an account</a></div>
     </div>
 </div>
