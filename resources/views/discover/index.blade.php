@@ -3,9 +3,9 @@
 <div class="mx-auto max-w-4xl">
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div><p class="font-bold text-indigo-600">LAAAMIII DISCOVER</p><h1 class="mt-2 text-4xl font-black">People around you</h1><p class="mt-2 text-slate-600">Your exact location is never shown to other people.</p></div>
-        <div class="flex gap-2"><a href="{{ route('connections.index') }}" class="rounded-xl border bg-white px-5 py-3 font-bold">Connections</a><button id="refresh-location" class="rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white">Find people nearby</button></div>
+        <div class="flex gap-2"><a href="{{ route('connections.index') }}" class="rounded-xl border bg-white px-5 py-3 font-bold">Connections</a><button id="refresh-location" type="button" class="rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white">Find people nearby</button></div>
     </div>
-    <div id="location-status" class="mb-6 rounded-2xl border bg-white p-4 text-sm text-slate-600">Laaamiii needs your permission to check who is nearby. Your location is stored temporarily and expires automatically.</div>
+    <div id="location-status" class="mb-6 rounded-2xl border bg-white p-4 text-sm text-slate-600" aria-live="polite">Laaamiii needs your permission to check who is nearby. Your location is stored temporarily and expires automatically.</div>
     <div id="people" class="grid gap-4 sm:grid-cols-2"></div>
 </div>
 
@@ -16,7 +16,7 @@
         <p class="mt-3 text-center text-slate-600">Allow Laaamiii to use your location so we can show you people nearby. Your exact location will not be shown to other users.</p>
         <button id="allow-location" type="button" class="mt-6 w-full rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white">Allow location</button>
         <button id="cancel-location" type="button" class="mt-3 w-full rounded-xl border px-5 py-3 font-bold text-slate-700">Not now</button>
-        <p id="location-modal-error" class="mt-4 hidden text-center text-sm text-red-600"></p>
+        <p id="location-modal-error" class="mt-4 hidden text-center text-sm text-red-600" role="alert"></p>
     </div>
 </div>
 
@@ -31,17 +31,17 @@ const modalError = document.getElementById('location-modal-error');
 const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
 function escapeHtml(value = '') { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }
-function showLocationModal() { modalError.textContent=''; modalError.classList.add('hidden'); locationModal.classList.remove('hidden'); locationModal.classList.add('flex'); }
+function showLocationModal() { modalError.textContent=''; modalError.classList.add('hidden'); locationModal.classList.remove('hidden'); locationModal.classList.add('flex'); allowLocation.focus(); }
 function hideLocationModal() { locationModal.classList.add('hidden'); locationModal.classList.remove('flex'); }
 
-async function wave(id, button) {
-    button.disabled = true;
+async function wave(id, waveButton) {
+    waveButton.disabled = true;
     try {
         const r = await fetch('/connections/' + id, {method:'POST', headers:{'Accept':'application/json','X-CSRF-TOKEN':csrf}});
-        const data = await r.json();
+        const data = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(data.message || 'Could not send wave.');
-        button.textContent='👋 Wave sent';
-    } catch(e) { button.disabled=false; button.textContent=e.message || 'Try again'; }
+        waveButton.textContent='👋 Wave sent';
+    } catch(e) { waveButton.disabled=false; waveButton.textContent=e.message || 'Try again'; }
 }
 
 function locationErrorMessage(error) {
@@ -68,7 +68,7 @@ async function saveAndFind(position) {
     if (!response.ok) throw new Error(data.message || 'Nearby people could not be loaded.');
 
     statusBox.textContent=`Showing discoverable people within ${data.radius_km} km. Their exact locations are hidden.`;
-    peopleBox.innerHTML=data.people.length?data.people.map(person=>`<article class="rounded-3xl border bg-white p-5 shadow-sm"><div class="flex items-start gap-4"><div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-100 text-xl font-black text-indigo-700">${person.avatar?`<img src="${escapeHtml(person.avatar)}" class="h-full w-full object-cover" alt="">`:escapeHtml(person.name.charAt(0).toUpperCase())}</div><div class="min-w-0 flex-1"><h2 class="font-bold text-slate-900">${escapeHtml(person.name)}</h2><p class="mt-1 font-semibold text-indigo-600">📍 ${escapeHtml(person.distance)}</p><p class="mt-2 text-sm text-slate-600">${escapeHtml(person.bio||'New to Laaamiii')}</p><button onclick="wave(${person.id},this)" class="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white">👋 Wave</button></div></div></article>`).join(''):'<div class="rounded-3xl border bg-white p-8 text-center text-slate-500 sm:col-span-2">No discoverable people are nearby right now. Make sure the other person has completed onboarding, enabled “Show me to people nearby”, and recently opened Find people nearby.</div>';
+    peopleBox.innerHTML=data.people.length?data.people.map(person=>`<article class="rounded-3xl border bg-white p-5 shadow-sm"><div class="flex items-start gap-4"><div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-100 text-xl font-black text-indigo-700">${person.avatar?`<img src="${escapeHtml(person.avatar)}" class="h-full w-full object-cover" alt="">`:escapeHtml(person.name.charAt(0).toUpperCase())}</div><div class="min-w-0 flex-1"><h2 class="font-bold text-slate-900">${escapeHtml(person.name)}</h2><p class="mt-1 font-semibold text-indigo-600">📍 ${escapeHtml(person.distance)}</p><p class="mt-2 text-sm text-slate-600">${escapeHtml(person.bio||'New to Laaamiii')}</p><button type="button" onclick="wave(${person.id},this)" class="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white">👋 Wave</button></div></div></article>`).join(''):'<div class="rounded-3xl border bg-white p-8 text-center text-slate-500 sm:col-span-2">No discoverable people are nearby right now. Make sure the other person has completed onboarding, enabled “Show me to people nearby”, and recently opened Find people nearby.</div>';
 }
 
 function getPosition(options) {
@@ -79,7 +79,7 @@ async function findPeople() {
     if (!navigator.geolocation) { statusBox.textContent='Your browser does not support location services.'; return; }
 
     if (!window.isSecureContext) {
-        statusBox.textContent='Location access requires HTTPS. Open Laaamiii using https://laaamiii.com and try again.';
+        statusBox.textContent='Location access requires HTTPS. Open Laaamiii using the HTTPS version of the site and try again.';
         modalError.textContent='Use the HTTPS version of Laaamiii to enable location access.';
         modalError.classList.remove('hidden');
         return;
@@ -110,12 +110,14 @@ async function findPeople() {
         }
     } finally {
         button.disabled=false;
-        button.textContent='Refresh nearby people';
+        button.textContent='Find people nearby';
     }
 }
 
 button.addEventListener('click', showLocationModal);
 allowLocation.addEventListener('click', findPeople);
 cancelLocation.addEventListener('click', hideLocationModal);
+locationModal.addEventListener('click', event => { if (event.target === locationModal) hideLocationModal(); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && !locationModal.classList.contains('hidden')) hideLocationModal(); });
 </script>
 @endsection
