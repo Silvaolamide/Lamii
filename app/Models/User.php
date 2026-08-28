@@ -6,6 +6,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -25,7 +26,6 @@ class User extends Authenticatable
             'date_of_birth' => 'date',
             'password' => 'hashed',
             'is_discoverable' => 'boolean',
-            'onboarding_completed' => 'boolean',
             'discovery_radius' => 'integer',
         ];
     }
@@ -38,5 +38,10 @@ class User extends Authenticatable
     public function location(): HasOne
     {
         return $this->hasOne(UserLocation::class);
+    }
+
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
     }
 }
