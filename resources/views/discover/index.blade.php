@@ -1,123 +1,25 @@
 @extends('layouts.app')
 @section('content')
-<div class="mx-auto max-w-4xl">
-    <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div><p class="font-bold text-indigo-600">LAAAMIII DISCOVER</p><h1 class="mt-2 text-4xl font-black">People around you</h1><p class="mt-2 text-slate-600">Your exact location is never shown to other people.</p></div>
-        <div class="flex gap-2"><a href="{{ route('connections.index') }}" class="rounded-xl border bg-white px-5 py-3 font-bold">Connections</a><button id="refresh-location" type="button" class="rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white">Find people nearby</button></div>
-    </div>
-    <div id="location-status" class="mb-6 rounded-2xl border bg-white p-4 text-sm text-slate-600" aria-live="polite">Laaamiii needs your permission to check who is nearby. Your location is stored temporarily and expires automatically.</div>
-    <div id="people" class="grid gap-4 sm:grid-cols-2"></div>
+<div class="grid gap-7 lg:grid-cols-[1fr_320px]">
+    <section>
+        <div class="mb-7 flex items-end justify-between gap-4"><div><p class="text-xs font-black uppercase tracking-[.2em] text-indigo-600">Discover</p><h1 class="mt-2 text-4xl font-black tracking-tight sm:text-5xl">People nearby</h1><p class="mt-2 text-slate-500">Real people. Approximate distance. Your location stays private.</p></div><button id="refresh-location" type="button" class="tap hidden rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-lg sm:block">Find nearby</button></div>
+        <div id="location-status" class="mb-5 rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-white p-5 text-sm font-medium text-slate-600" aria-live="polite"><div class="flex gap-3"><span class="mt-0.5">⌖</span><span>Lamii needs your permission to discover people around you. Your exact location is never shown.</span></div></div>
+        <div id="people" class="grid gap-4 sm:grid-cols-2"></div>
+    </section>
+    <aside class="hidden lg:block"><div class="sticky top-24 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><p class="text-xs font-black uppercase tracking-[.18em] text-slate-400">How Lamii works</p><div class="mt-5 space-y-5"><div class="flex gap-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 font-black">1</span><div><p class="font-black">Discover</p><p class="mt-1 text-sm text-slate-500">Find people within your chosen radius.</p></div></div><div class="flex gap-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 font-black text-indigo-600">2</span><div><p class="font-black">Wave</p><p class="mt-1 text-sm text-slate-500">Let someone know you'd like to connect.</p></div></div><div class="flex gap-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-pink-50 font-black">3</span><div><p class="font-black">Connect</p><p class="mt-1 text-sm text-slate-500">Chat when the feeling is mutual.</p></div></div></div></div></aside>
 </div>
-
-<div id="location-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-5" role="dialog" aria-modal="true" aria-labelledby="location-title">
-    <div class="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl">
-        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-3xl">📍</div>
-        <h2 id="location-title" class="mt-5 text-center text-2xl font-black">Find people around you</h2>
-        <p class="mt-3 text-center text-slate-600">Allow Laaamiii to use your location so we can show you people nearby. Your exact location will not be shown to other users.</p>
-        <button id="allow-location" type="button" class="mt-6 w-full rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white">Allow location</button>
-        <button id="cancel-location" type="button" class="mt-3 w-full rounded-xl border px-5 py-3 font-bold text-slate-700">Not now</button>
-        <p id="location-modal-error" class="mt-4 hidden text-center text-sm text-red-600" role="alert"></p>
-    </div>
-</div>
-
+<div class="fixed bottom-20 left-5 right-5 z-30 sm:hidden"><button id="mobile-find" type="button" class="tap w-full rounded-2xl bg-slate-950 px-5 py-4 font-black text-white shadow-2xl">⌖ Find people nearby</button></div>
+<div id="location-modal" class="fixed inset-0 z-[60] hidden items-end justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="location-title"><div class="w-full max-w-md rounded-[2rem] bg-white p-7 shadow-2xl sm:p-8"><div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-950 text-2xl text-white shadow-xl">⌖</div><h2 id="location-title" class="mt-5 text-center text-2xl font-black">Find people around you</h2><p class="mt-3 text-center text-sm leading-6 text-slate-500">Allow location access to discover people nearby. Lamii shows distance, not your exact location.</p><button id="allow-location" type="button" class="tap mt-6 w-full rounded-2xl bg-slate-950 px-5 py-4 font-black text-white">Allow location</button><button id="cancel-location" type="button" class="mt-3 w-full rounded-2xl px-5 py-3 font-bold text-slate-500">Not now</button><p id="location-modal-error" class="mt-3 hidden text-center text-sm font-semibold text-red-600" role="alert"></p></div></div>
 <script>
-const statusBox = document.getElementById('location-status');
-const peopleBox = document.getElementById('people');
-const button = document.getElementById('refresh-location');
-const locationModal = document.getElementById('location-modal');
-const allowLocation = document.getElementById('allow-location');
-const cancelLocation = document.getElementById('cancel-location');
-const modalError = document.getElementById('location-modal-error');
-const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
-
-function escapeHtml(value = '') { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }
-function showLocationModal() { modalError.textContent=''; modalError.classList.add('hidden'); locationModal.classList.remove('hidden'); locationModal.classList.add('flex'); allowLocation.focus(); }
-function hideLocationModal() { locationModal.classList.add('hidden'); locationModal.classList.remove('flex'); }
-
-async function wave(id, waveButton) {
-    waveButton.disabled = true;
-    try {
-        const r = await fetch('/connections/' + id, {method:'POST', headers:{'Accept':'application/json','X-CSRF-TOKEN':csrf}});
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(data.message || 'Could not send wave.');
-        waveButton.textContent='👋 Wave sent';
-    } catch(e) { waveButton.disabled=false; waveButton.textContent=e.message || 'Try again'; }
-}
-
-function locationErrorMessage(error) {
-    if (error.code === 1) return 'Location permission was denied. In your browser/site settings, allow location access for Laaamiii, then try again.';
-    if (error.code === 2) return 'Your device could not determine its location. Turn on Location Services/GPS and try again.';
-    if (error.code === 3) return 'The first GPS lookup timed out. We will retry with a less strict GPS request.';
-    return 'We could not determine your location. Please try again.';
-}
-
-async function saveAndFind(position) {
-    const payload = {latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy};
-    statusBox.textContent = 'Location found. Looking for people nearby…';
-
-    const locationResponse = await fetch('{{ route('location.update') }}', {
-        method:'POST',
-        headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':csrf},
-        body:JSON.stringify(payload)
-    });
-    const locationData = await locationResponse.json().catch(() => ({}));
-    if (!locationResponse.ok) throw new Error(locationData.message || 'Location could not be saved.');
-
-    const response = await fetch('{{ route('discover.nearby') }}?latitude='+encodeURIComponent(payload.latitude)+'&longitude='+encodeURIComponent(payload.longitude),{headers:{'Accept':'application/json'}});
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.message || 'Nearby people could not be loaded.');
-
-    statusBox.textContent=`Showing discoverable people within ${data.radius_km} km. Their exact locations are hidden.`;
-    peopleBox.innerHTML=data.people.length?data.people.map(person=>`<article class="rounded-3xl border bg-white p-5 shadow-sm"><div class="flex items-start gap-4"><div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-100 text-xl font-black text-indigo-700">${person.avatar?`<img src="${escapeHtml(person.avatar)}" class="h-full w-full object-cover" alt="">`:escapeHtml(person.name.charAt(0).toUpperCase())}</div><div class="min-w-0 flex-1"><h2 class="font-bold text-slate-900">${escapeHtml(person.name)}</h2><p class="mt-1 font-semibold text-indigo-600">📍 ${escapeHtml(person.distance)}</p><p class="mt-2 text-sm text-slate-600">${escapeHtml(person.bio||'New to Laaamiii')}</p><button type="button" onclick="wave(${person.id},this)" class="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white">👋 Wave</button></div></div></article>`).join(''):'<div class="rounded-3xl border bg-white p-8 text-center text-slate-500 sm:col-span-2">No discoverable people are nearby right now. Make sure the other person has completed onboarding, enabled “Show me to people nearby”, and recently opened Find people nearby.</div>';
-}
-
-function getPosition(options) {
-    return new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,options));
-}
-
-async function findPeople() {
-    if (!navigator.geolocation) { statusBox.textContent='Your browser does not support location services.'; return; }
-
-    if (!window.isSecureContext) {
-        statusBox.textContent='Location access requires HTTPS. Open Laaamiii using the HTTPS version of the site and try again.';
-        modalError.textContent='Use the HTTPS version of Laaamiii to enable location access.';
-        modalError.classList.remove('hidden');
-        return;
-    }
-
-    hideLocationModal();
-    button.disabled = true;
-    button.textContent = 'Finding people…';
-    statusBox.textContent = 'Requesting your location…';
-
-    try {
-        let position;
-        try {
-            position = await getPosition({enableHighAccuracy:true,maximumAge:60000,timeout:15000});
-        } catch (firstError) {
-            if (firstError.code === 1) throw firstError;
-            statusBox.textContent = 'GPS was slow, trying your device location again…';
-            position = await getPosition({enableHighAccuracy:false,maximumAge:300000,timeout:20000});
-        }
-
-        await saveAndFind(position);
-    } catch (error) {
-        const message = error.code ? locationErrorMessage(error) : (error.message || 'We could not load nearby people. Please try again.');
-        statusBox.textContent = message;
-        if (error.code === 1) {
-            modalError.textContent = message;
-            modalError.classList.remove('hidden');
-        }
-    } finally {
-        button.disabled=false;
-        button.textContent='Find people nearby';
-    }
-}
-
-button.addEventListener('click', showLocationModal);
-allowLocation.addEventListener('click', findPeople);
-cancelLocation.addEventListener('click', hideLocationModal);
-locationModal.addEventListener('click', event => { if (event.target === locationModal) hideLocationModal(); });
-document.addEventListener('keydown', event => { if (event.key === 'Escape' && !locationModal.classList.contains('hidden')) hideLocationModal(); });
+const statusBox=document.getElementById('location-status'),peopleBox=document.getElementById('people'),button=document.getElementById('refresh-location'),mobileFind=document.getElementById('mobile-find'),modal=document.getElementById('location-modal'),allow=document.getElementById('allow-location'),cancel=document.getElementById('cancel-location'),modalError=document.getElementById('location-modal-error'),csrf=document.querySelector('meta[name="csrf-token"]')?.content;
+function escapeHtml(v=''){const d=document.createElement('div');d.textContent=v;return d.innerHTML}
+function openModal(){modalError.textContent='';modalError.classList.add('hidden');modal.classList.remove('hidden');modal.classList.add('flex');allow.focus()}
+function closeModal(){modal.classList.add('hidden');modal.classList.remove('flex')}
+function setLoading(on){button.disabled=on;mobileFind.disabled=on;button.textContent=on?'Finding…':'Find nearby';mobileFind.textContent=on?'Finding people…':'⌖ Find people nearby'}
+async function wave(id,b){b.disabled=true;b.textContent='Sending…';try{const r=await fetch('/connections/'+id,{method:'POST',headers:{Accept:'application/json','X-CSRF-TOKEN':csrf}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.message||'Could not send wave.');b.textContent='✓ Wave sent';b.className='mt-4 w-full rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700'}catch(e){b.disabled=false;b.textContent='Try again';setTimeout(()=>b.textContent='👋 Wave',2000)}}
+function geoMessage(e){if(e.code===1)return'Location permission was denied. Allow location for Lamii in your browser/site settings, then try again.';if(e.code===2)return'Your device could not determine your location. Turn on Location Services/GPS and try again.';if(e.code===3)return'Location lookup timed out. Please try again.';return'We could not determine your location. Please try again.'}
+function position(options){return new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,options))}
+async function findPeople(){if(!navigator.geolocation){statusBox.textContent='Your browser does not support location services.';return}if(!window.isSecureContext){const m='Location access requires HTTPS. Open the HTTPS version of Lamii and try again.';statusBox.textContent=m;modalError.textContent=m;modalError.classList.remove('hidden');return}closeModal();setLoading(true);statusBox.textContent='Requesting your location…';try{let p;try{p=await position({enableHighAccuracy:true,maximumAge:60000,timeout:15000})}catch(e){if(e.code===1)throw e;statusBox.textContent='GPS was slow. Trying again…';p=await position({enableHighAccuracy:false,maximumAge:300000,timeout:20000})}const payload={latitude:p.coords.latitude,longitude:p.coords.longitude,accuracy:p.coords.accuracy};const lr=await fetch('{{ route('location.update') }}',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json','X-CSRF-TOKEN':csrf},body:JSON.stringify(payload)});const ld=await lr.json().catch(()=>({}));if(!lr.ok)throw new Error(ld.message||'Location could not be saved.');const r=await fetch('{{ route('discover.nearby') }}?latitude='+encodeURIComponent(payload.latitude)+'&longitude='+encodeURIComponent(payload.longitude),{headers:{Accept:'application/json'}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.message||'Nearby people could not be loaded.');statusBox.innerHTML='<div class="flex gap-3"><span>✓</span><span>Showing people within '+d.radius_km+' km. Exact locations are hidden.</span></div>';peopleBox.innerHTML=d.people.length?d.people.map(p=>`<article class="group rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-glow"><div class="flex items-start gap-4"><div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-100 to-pink-100 text-xl font-black text-indigo-700">${p.avatar?`<img src="${escapeHtml(p.avatar)}" class="h-full w-full object-cover" alt="">`:escapeHtml(p.name.charAt(0).toUpperCase())}</div><div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-2"><h2 class="font-black">${escapeHtml(p.name)}</h2><span class="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700">NEARBY</span></div><p class="mt-1 text-sm font-bold text-indigo-600">⌖ ${escapeHtml(p.distance)}</p><p class="mt-3 line-clamp-2 text-sm leading-6 text-slate-500">${escapeHtml(p.bio||'New to Lamii')}</p><button type="button" onclick="wave(${p.id},this)" class="mt-4 w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white transition hover:bg-indigo-600">👋 Wave</button></div></div></article>`).join(''):'<div class="rounded-[1.75rem] border border-dashed border-slate-300 bg-white p-10 text-center sm:col-span-2"><div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-xl">⌖</div><h2 class="mt-4 font-black">Nobody nearby yet</h2><p class="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">Try again later. People need to be discoverable and have recently shared their location.</p></div>'}catch(e){const m=e.code?geoMessage(e):(e.message||'We could not load nearby people. Please try again.');statusBox.textContent=m;if(e.code===1){modalError.textContent=m;modalError.classList.remove('hidden')}}finally{setLoading(false)}}
+button.addEventListener('click',openModal);mobileFind.addEventListener('click',openModal);allow.addEventListener('click',findPeople);cancel.addEventListener('click',closeModal);modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!modal.classList.contains('hidden'))closeModal()});
 </script>
 @endsection
