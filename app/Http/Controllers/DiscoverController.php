@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Block;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -24,6 +25,16 @@ class DiscoverController extends Controller
         $latitude = (float) $data['latitude'];
         $longitude = (float) $data['longitude'];
 
+        $blockedIds = Block::query()
+            ->where(fn ($query) => $query
+                ->where('blocker_id', $user->id)
+                ->orWhere('blocked_id', $user->id))
+            ->get(['blocker_id', 'blocked_id'])
+            ->flatMap(fn ($block) => [$block->blocker_id, $block->blocked_id])
+            ->unique()
+            ->reject(fn ($id) => (int) $id === (int) $user->id)
+            ->values();
+
         // Clamp the acos input to [-1, 1]. Floating-point rounding can otherwise
         // produce a value such as 1.0000000001 for nearby/same-location users,
         // causing MySQL to return NULL from ACOS and exclude valid matches.
@@ -38,6 +49,7 @@ class DiscoverController extends Controller
             ->where('users.is_discoverable', true)
             ->where('users.onboarding_completed', true)
             ->where('user_locations.expires_at', '>', now())
+            ->when($blockedIds->isNotEmpty(), fn ($query) => $query->whereNotIn('users.id', $blockedIds))
             ->having('distance_km', '<=', $radius)
             ->orderBy('distance_km')
             ->limit(50)
