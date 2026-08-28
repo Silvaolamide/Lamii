@@ -24,7 +24,11 @@ class DiscoverController extends Controller
         $latitude = (float) $data['latitude'];
         $longitude = (float) $data['longitude'];
 
-        $distance = '(6371 * acos(cos(radians(?)) * cos(radians(user_locations.latitude)) * cos(radians(user_locations.longitude) - radians(?)) + sin(radians(?)) * sin(radians(user_locations.latitude))))';
+        // Clamp the acos input to [-1, 1]. Floating-point rounding can otherwise
+        // produce a value such as 1.0000000001 for nearby/same-location users,
+        // causing MySQL to return NULL from ACOS and exclude valid matches.
+        $distanceExpression = 'LEAST(1, GREATEST(-1, cos(radians(?)) * cos(radians(user_locations.latitude)) * cos(radians(user_locations.longitude) - radians(?)) + sin(radians(?)) * sin(radians(user_locations.latitude))))';
+        $distance = "(6371 * acos({$distanceExpression}))";
 
         $people = User::query()
             ->select('users.id', 'users.name', 'users.avatar', 'users.bio')
