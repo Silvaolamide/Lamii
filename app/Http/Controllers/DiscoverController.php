@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Block;
+use App\Models\Connection;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -35,9 +36,6 @@ class DiscoverController extends Controller
             ->reject(fn ($id) => (int) $id === (int) $user->id)
             ->values();
 
-        // Clamp the acos input to [-1, 1]. Floating-point rounding can otherwise
-        // produce a value such as 1.0000000001 for nearby/same-location users,
-        // causing MySQL to return NULL from ACOS and exclude valid matches.
         $distanceExpression = 'LEAST(1, GREATEST(-1, cos(radians(?)) * cos(radians(user_locations.latitude)) * cos(radians(user_locations.longitude) - radians(?)) + sin(radians(?)) * sin(radians(user_locations.latitude))))';
         $distance = "(6371 * acos({$distanceExpression}))";
 
@@ -53,14 +51,47 @@ class DiscoverController extends Controller
             ->having('distance_km', '<=', $radius)
             ->orderBy('distance_km')
             ->limit(50)
-            ->get()
-            ->map(fn ($person) => [
+            ->get();
+
+        $otherIds = $people->pluck('id');
+        $relationships = Connection::query()
+            ->where(function ($query) use ($user, $otherIds) {
+                $query->where('sender_id', $user->id)->whereIn('recipient_id', $otherIds)
+                    ->orWhere(function ($q) use ($user, $otherIds) {
+                        $q->where('recipient_id', $user->id)->whereIn('sender_id', $otherIds);
+                    });
+            })
+            ->get(['id', 'sender_id', 'recipient_id', 'status'])
+            ->keyBy(function ($connection) use ($user) {
+                return $connection->sender_id == $user->id ? $connection->recipient_id : $connection->sender_id;
+            });
+
+        $people = $people->map(function ($person) use ($relationships, $user) {
+            $connection = $relationships->get($person->id);
+            $state = 'none';
+            $connectionId = null;
+
+            if ($connection) {
+                $connectionId = $connection->id;
+                if ($connection->status === Connection::ACCEPTED) {
+                    $state = 'connected';
+                } elseif ($connection->status === Connection::PENDING) {
+                    $state = $connection->sender_id == $user->id ? 'sent' : 'incoming';
+                } elseif ($connection->status === Connection::DECLINED) {
+                    $state = 'declined';
+                }
+            }
+
+            return [
                 'id' => $person->id,
                 'name' => $person->name,
                 'avatar' => $person->avatar ? asset('storage/'.$person->avatar) : null,
                 'bio' => $person->bio,
                 'distance' => $this->formatDistance((float) $person->distance_km),
-            ]);
+                'connection_state' => $state,
+                'connection_id' => $connectionId,
+            ];
+        });
 
         return response()->json(['people' => $people, 'radius_km' => $radius]);
     }
