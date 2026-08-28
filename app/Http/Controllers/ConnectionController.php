@@ -7,6 +7,8 @@ use App\Models\Connection;
 use App\Models\User;
 use App\Notifications\NewWaveNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ConnectionController extends Controller
 {
@@ -55,17 +57,21 @@ class ConnectionController extends Controller
             ->first();
 
         if ($existing) {
-            return response()->json(['message' => 'A connection already exists between you.'], 422);
+            throw ValidationException::withMessages([
+                'connection' => ['A connection already exists between you.'],
+            ]);
         }
 
-        $connection = Connection::create([
-            'sender_id' => $me->id,
-            'recipient_id' => $user->id,
-            'status' => Connection::PENDING,
-        ]);
+        DB::transaction(function () use ($me, $user, &$connection) {
+            $connection = Connection::create([
+                'sender_id' => $me->id,
+                'recipient_id' => $user->id,
+                'status' => Connection::PENDING,
+            ]);
 
-        $connection->load('sender');
-        $user->notify(new NewWaveNotification($connection));
+            $connection->load('sender');
+            $user->notify(new NewWaveNotification($connection));
+        });
 
         return response()->json(['ok' => true, 'message' => 'Wave sent!']);
     }
