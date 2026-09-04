@@ -40,27 +40,52 @@ class DiscoverController extends Controller
             ->reject(fn ($id) => (int) $id === (int) $user->id)
             ->values();
 
-        $distanceExpression = 'LEAST(1, GREATEST(-1, cos(radians(?)) * cos(radians(user_locations.latitude)) * cos(radians(user_locations.longitude) - radians(?)) + sin(radians(?)) * sin(radians(user_locations.latitude))))';
-        $distance = "(6371 * acos({$distanceExpression}))";
+        // Keep the database query portable across SQLite (CI/tests), MySQL and
+        // other supported databases. The bounding box limits candidates, then
+        // the Haversine calculation below determines the exact distance.
+        $latitudeDelta = $radius / 111.32;
+        $longitudeScale = max(cos(deg2rad($latitude)), 0.01);
+        $longitudeDelta = $radius / (111.32 * $longitudeScale);
+        $minLatitude = max(-90, $latitude - $latitudeDelta);
+        $maxLatitude = min(90, $latitude + $latitudeDelta);
+        $minLongitude = $longitude - $longitudeDelta;
+        $maxLongitude = $longitude + $longitudeDelta;
 
-        $peopleQuery = User::query()
+        $candidateQuery = User::query()
             ->select('users.id', 'users.name', 'users.avatar', 'users.bio')
-            ->selectRaw("{$distance} AS distance_km", [$latitude, $longitude, $latitude])
             ->join('user_locations', 'user_locations.user_id', '=', 'users.id')
             ->where('users.id', '!=', $user->id)
             ->where('users.is_discoverable', true)
             ->where('users.onboarding_completed', true)
             ->where('user_locations.expires_at', '>', now())
-            ->when($blockedIds->isNotEmpty(), fn ($query) => $query->whereNotIn('users.id', $blockedIds))
-            ->having('distance_km', '<=', $radius)
-            ->orderBy('distance_km')
-            ->orderBy('users.id');
+            ->whereBetween('user_locations.latitude', [$minLatitude, $maxLatitude])
+            ->whereBetween('user_locations.longitude', [$minLongitude, $maxLongitude])
+            ->when($blockedIds->isNotEmpty(), fn ($query) => $query->whereNotIn('users.id', $blockedIds));
 
-        $total = (clone $peopleQuery)->count('users.id');
-        $people = $peopleQuery
-            ->offset(($page - 1) * $perPage)
-            ->limit($perPage)
-            ->get();
+        // The current location model is expected to have one active location per
+        // user. If duplicate rows exist, keep the nearest candidate per user.
+        $people = $candidateQuery->get()->map(function ($person) use ($latitude, $longitude) {
+            $person->distance_km = $this->distanceInKilometres(
+                $latitude,
+                $longitude,
+                (float) $person->getAttribute('latitude'),
+                (float) $person->getAttribute('longitude')
+            );
+
+            return $person;
+        });
+
+        // The coordinates are only used internally for distance calculation and
+        // are never exposed in the API response.
+        $people = $people
+            ->filter(fn ($person) => $person->distance_km <= $radius)
+            ->sortBy(fn ($person) => [(float) $person->distance_km, (int) $person->id])
+            ->values();
+
+        $total = $people->count();
+        $people = $people
+            ->slice(($page - 1) * $perPage, $perPage)
+            ->values();
 
         $otherIds = $people->pluck('id');
         $relationships = Connection::query()
@@ -112,6 +137,17 @@ class DiscoverController extends Controller
                 'last_page' => max(1, (int) ceil($total / $perPage)),
             ],
         ]);
+    }
+
+    private function distanceInKilometres(float $latitude1, float $longitude1, float $latitude2, float $longitude2): float
+    {
+        $earthRadius = 6371.0;
+        $dLatitude = deg2rad($latitude2 - $latitude1);
+        $dLongitude = deg2rad($longitude2 - $longitude1);
+        $a = sin($dLatitude / 2) ** 2
+            + cos(deg2rad($latitude1)) * cos(deg2rad($latitude2)) * sin($dLongitude / 2) ** 2;
+
+        return $earthRadius * 2 * asin(min(1, sqrt($a)));
     }
 
     private function formatDistance(float $kilometres): string
