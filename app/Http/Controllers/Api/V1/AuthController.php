@@ -58,6 +58,12 @@ class AuthController extends Controller
             }
         }
 
+        // Sanctum's guard caches the authenticated user on the application
+        // instance. Clear that cached identity so logout takes effect
+        // immediately when the same application instance handles another
+        // request (as happens in feature tests and long-lived runtimes).
+        auth('sanctum')->forgetUser();
+
         return response()->json(['ok' => true]);
     }
 }
