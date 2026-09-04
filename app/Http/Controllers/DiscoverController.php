@@ -52,7 +52,14 @@ class DiscoverController extends Controller
         $maxLongitude = $longitude + $longitudeDelta;
 
         $candidateQuery = User::query()
-            ->select('users.id', 'users.name', 'users.avatar', 'users.bio')
+            ->select(
+                'users.id',
+                'users.name',
+                'users.avatar',
+                'users.bio',
+                'user_locations.latitude',
+                'user_locations.longitude'
+            )
             ->join('user_locations', 'user_locations.user_id', '=', 'users.id')
             ->where('users.id', '!=', $user->id)
             ->where('users.is_discoverable', true)
@@ -62,21 +69,19 @@ class DiscoverController extends Controller
             ->whereBetween('user_locations.longitude', [$minLongitude, $maxLongitude])
             ->when($blockedIds->isNotEmpty(), fn ($query) => $query->whereNotIn('users.id', $blockedIds));
 
-        // The current location model is expected to have one active location per
-        // user. If duplicate rows exist, keep the nearest candidate per user.
+        // The coordinates are used only internally for distance calculation and
+        // are never exposed in the API response.
         $people = $candidateQuery->get()->map(function ($person) use ($latitude, $longitude) {
             $person->distance_km = $this->distanceInKilometres(
                 $latitude,
                 $longitude,
-                (float) $person->getAttribute('latitude'),
-                (float) $person->getAttribute('longitude')
+                (float) $person->latitude,
+                (float) $person->longitude
             );
 
             return $person;
         });
 
-        // The coordinates are only used internally for distance calculation and
-        // are never exposed in the API response.
         $people = $people
             ->filter(fn ($person) => $person->distance_km <= $radius)
             ->sortBy(fn ($person) => [(float) $person->distance_km, (int) $person->id])
