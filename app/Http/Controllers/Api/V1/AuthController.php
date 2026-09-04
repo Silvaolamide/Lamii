@@ -45,10 +45,13 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $accessToken = $request->user()->currentAccessToken();
+        // Resolve the token from the same bearer credential Sanctum authenticated
+        // so revocation is explicit and independent of the guard's current-token
+        // implementation.
+        $accessToken = PersonalAccessToken::findToken($request->bearerToken());
 
-        if ($accessToken instanceof PersonalAccessToken) {
-            PersonalAccessToken::query()->whereKey($accessToken->getKey())->delete();
+        if ($accessToken) {
+            $accessToken->delete();
         }
 
         return response()->json(['ok' => true]);
