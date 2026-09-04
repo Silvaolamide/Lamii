@@ -36,15 +36,11 @@ class ConnectionController extends Controller
 
     public function accept(Request $request, Connection $connection)
     {
-        abort_unless($connection->recipient_id === $request->user()->id && $connection->status === Connection::PENDING, 403);
-        $connection->update(['status' => Connection::ACCEPTED, 'responded_at' => now()]);
-        return response()->json(['ok' => true, 'state' => 'connected']);
+        return app(WebConnectionController::class)->accept($request, $connection);
     }
 
     public function decline(Request $request, Connection $connection)
     {
-        abort_unless($connection->recipient_id === $request->user()->id && $connection->status === Connection::PENDING, 403);
-        $connection->update(['status' => Connection::DECLINED, 'responded_at' => now()]);
-        return response()->json(['ok' => true, 'state' => 'declined']);
+        return app(WebConnectionController::class)->decline($request, $connection);
     }
 }
