@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\ConnectionController as WebConnectionController;
 use App\Models\Connection;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ConnectionController extends Controller
@@ -25,11 +26,10 @@ class ConnectionController extends Controller
                     'user' => ['id' => $other->id, 'name' => $other->name, 'avatar' => $other->avatar ? asset('storage/'.$other->avatar) : null, 'bio' => $other->bio],
                 ];
             });
-
         return response()->json(['connections' => $connections]);
     }
 
-    public function wave(Request $request, $user)
+    public function wave(Request $request, User $user)
     {
         return app(WebConnectionController::class)->store($request, $user);
     }
