@@ -36,24 +36,17 @@ jobs:
             echo 'Composer lock is already current.'
             exit 0
           fi
-          sha=$(gh api "repos/${GITHUB_REPOSITORY}/contents/composer.lock?ref=${GITHUB_REF_NAME}" --jq .sha)
+          export LOCK_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/contents/composer.lock?ref=${GITHUB_REF_NAME}" --jq .sha)"
           python3 - <<'PY'
-          import base64, json
+          import base64, json, os
           from pathlib import Path
           payload = {
               'message': 'ci: refresh Composer lock for Reverb dependency',
-              'branch': __import__('os').environ['GITHUB_REF_NAME'],
-              'sha': __import__('os').environ['LOCK_SHA'],
+              'branch': os.environ['GITHUB_REF_NAME'],
+              'sha': os.environ['LOCK_SHA'],
               'content': base64.b64encode(Path('composer.lock').read_bytes()).decode(),
           }
           Path('/tmp/composer-lock-payload.json').write_text(json.dumps(payload))
-          PY
-          LOCK_SHA="$sha" python3 - <<'PY'
-          import os
-          from pathlib import Path
-          p=Path('/tmp/composer-lock-payload.json')
-          text=p.read_text()
-          p.write_text(text.replace('__LOCK_SHA_PLACEHOLDER__', os.environ['LOCK_SHA']))
           PY
           gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/composer.lock" --input /tmp/composer-lock-payload.json
 
