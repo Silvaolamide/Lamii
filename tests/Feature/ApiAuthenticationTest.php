@@ -48,7 +48,7 @@ class ApiAuthenticationTest extends TestCase
         $this->postJson('/api/v1/auth/login', [
             'email' => 'api-auth@example.com',
             'password' => 'wrong-password',
-        ])->assertUnprocessable();
+        ])->assertUnauthorized();
 
         $this->assertDatabaseCount('personal_access_tokens', 0);
     }
@@ -56,6 +56,13 @@ class ApiAuthenticationTest extends TestCase
     public function test_protected_api_rejects_requests_without_token(): void
     {
         $this->getJson('/api/v1/me')->assertUnauthorized();
+    }
+
+    public function test_malformed_bearer_token_is_rejected(): void
+    {
+        $this->withHeader('Authorization', 'Bearer definitely-not-a-valid-token')
+            ->getJson('/api/v1/me')
+            ->assertUnauthorized();
     }
 
     public function test_bearer_token_authenticates_api_requests(): void
@@ -82,5 +89,24 @@ class ApiAuthenticationTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/v1/me')
             ->assertUnauthorized();
+    }
+
+    public function test_logout_revokes_only_the_current_token(): void
+    {
+        $user = $this->user();
+        $tokenA = $user->createToken('device-a')->plainTextToken;
+        $tokenB = $user->createToken('device-b')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$tokenA)
+            ->postJson('/api/v1/auth/logout')
+            ->assertOk();
+
+        $this->withHeader('Authorization', 'Bearer '.$tokenA)
+            ->getJson('/api/v1/me')
+            ->assertUnauthorized();
+
+        $this->withHeader('Authorization', 'Bearer '.$tokenB)
+            ->getJson('/api/v1/me')
+            ->assertOk();
     }
 }
