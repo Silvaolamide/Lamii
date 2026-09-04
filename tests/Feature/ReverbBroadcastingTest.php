@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Broadcasting\ConversationChannel;
 use App\Events\MessageSent;
+use App\Models\Block;
 use App\Models\Connection;
 use App\Models\Conversation;
 use App\Models\Message;
@@ -91,7 +92,10 @@ class ReverbBroadcastingTest extends TestCase
             'user_two_id' => $recipient->id,
         ]);
 
-        $sender->blocks()->create(['blocked_id' => $recipient->id]);
+        Block::create([
+            'blocker_id' => $sender->id,
+            'blocked_id' => $recipient->id,
+        ]);
 
         $this->assertFalse((new ConversationChannel())->join($sender, $conversation));
     }
