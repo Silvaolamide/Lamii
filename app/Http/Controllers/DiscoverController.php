@@ -19,12 +19,16 @@ class DiscoverController extends Controller
         $data = $request->validate([
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
         ]);
 
         $user = $request->user();
         $radius = max(1, min((int) $user->discovery_radius, 10));
         $latitude = (float) $data['latitude'];
         $longitude = (float) $data['longitude'];
+        $page = (int) ($data['page'] ?? 1);
+        $perPage = (int) ($data['per_page'] ?? 20);
 
         $blockedIds = Block::query()
             ->where(fn ($query) => $query
@@ -39,7 +43,7 @@ class DiscoverController extends Controller
         $distanceExpression = 'LEAST(1, GREATEST(-1, cos(radians(?)) * cos(radians(user_locations.latitude)) * cos(radians(user_locations.longitude) - radians(?)) + sin(radians(?)) * sin(radians(user_locations.latitude))))';
         $distance = "(6371 * acos({$distanceExpression}))";
 
-        $people = User::query()
+        $peopleQuery = User::query()
             ->select('users.id', 'users.name', 'users.avatar', 'users.bio')
             ->selectRaw("{$distance} AS distance_km", [$latitude, $longitude, $latitude])
             ->join('user_locations', 'user_locations.user_id', '=', 'users.id')
@@ -50,7 +54,12 @@ class DiscoverController extends Controller
             ->when($blockedIds->isNotEmpty(), fn ($query) => $query->whereNotIn('users.id', $blockedIds))
             ->having('distance_km', '<=', $radius)
             ->orderBy('distance_km')
-            ->limit(50)
+            ->orderBy('users.id');
+
+        $total = (clone $peopleQuery)->count('users.id');
+        $people = $peopleQuery
+            ->offset(($page - 1) * $perPage)
+            ->limit($perPage)
             ->get();
 
         $otherIds = $people->pluck('id');
@@ -91,9 +100,18 @@ class DiscoverController extends Controller
                 'connection_state' => $state,
                 'connection_id' => $connectionId,
             ];
-        });
+        })->values();
 
-        return response()->json(['people' => $people, 'radius_km' => $radius]);
+        return response()->json([
+            'people' => $people,
+            'radius_km' => $radius,
+            'meta' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => max(1, (int) ceil($total / $perPage)),
+            ],
+        ]);
     }
 
     private function formatDistance(float $kilometres): string
