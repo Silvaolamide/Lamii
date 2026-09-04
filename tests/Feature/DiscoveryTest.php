@@ -127,6 +127,16 @@ class DiscoveryTest extends TestCase
             ->assertJsonPath('meta.total', 3)
             ->assertJsonPath('meta.last_page', 2)
             ->assertJsonCount(1, 'people')
-            ->assertJsonStructure(['people.*' => ['id', 'name', 'avatar', 'bio', 'distance', 'connection_state', 'connection_id']]);
+            ->assertJsonStructure([
+                'people' => [[
+                    'id',
+                    'name',
+                    'avatar',
+                    'bio',
+                    'distance',
+                    'connection_state',
+                    'connection_id',
+                ]],
+            ]);
     }
 }
