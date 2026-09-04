@@ -1,0 +1,40 @@
+name: Regenerate Composer Lock
+
+on:
+  push:
+    branches: ['feature/lamii-api-v1-foundation']
+    paths: ['composer.json']
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/lamii-api-v1-foundation
+          fetch-depth: 0
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_mysql, sqlite3, pdo_sqlite
+          coverage: none
+          tools: composer:2
+
+      - name: Regenerate composer.lock
+        run: composer update laravel/sanctum --with-dependencies --no-interaction --prefer-dist
+
+      - name: Commit composer.lock
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add composer.lock
+          if git diff --cached --quiet; then
+            echo "composer.lock is already current"
+            exit 0
+          fi
+          git commit -m "chore(deps): regenerate composer.lock for Sanctum"
+          git push origin HEAD:feature/lamii-api-v1-foundation
