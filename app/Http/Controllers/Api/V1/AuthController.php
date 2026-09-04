@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
@@ -21,10 +21,15 @@ class AuthController extends Controller
         $user = User::where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
-            throw ValidationException::withMessages(['email' => ['The provided credentials are incorrect.']]);
+            return response()->json([
+                'message' => 'The provided credentials are incorrect.',
+                'errors' => [
+                    'email' => ['The provided credentials are incorrect.'],
+                ],
+            ], 401);
         }
 
-        $token = $user->createToken($credentials['device_name'] ?? 'lamii-app')->plainTextToken;
+        $token = $user->createToken($credentials['device_name'] ?? 'lami-app')->plainTextToken;
 
         return response()->json([
             'token' => $token,
@@ -40,7 +45,12 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()?->delete();
+        $accessToken = $request->user()->currentAccessToken();
+
+        if ($accessToken instanceof PersonalAccessToken) {
+            PersonalAccessToken::query()->whereKey($accessToken->getKey())->delete();
+        }
+
         return response()->json(['ok' => true]);
     }
 }
