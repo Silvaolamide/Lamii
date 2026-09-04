@@ -7,31 +7,29 @@ on:
     branches: ['main', 'production']
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           extensions: mbstring, pdo_mysql, sqlite3, pdo_sqlite
           coverage: none
           tools: composer:2
-      - name: Regenerate Composer lock for API branch
-        if: github.ref == 'refs/heads/feature/lamii-api-v1-foundation'
-        run: |
-          composer update laravel/sanctum laravel/socialite socialiteproviders/apple --with-dependencies --no-interaction --prefer-dist
-          if ! git diff --quiet -- composer.lock; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add composer.lock
-            git commit -m "chore(deps): regenerate composer.lock"
-            git push origin HEAD:feature/lamii-api-v1-foundation
-          fi
-      - uses: ramsey/composer-install@v3
+
+      - name: Validate Composer
+        run: composer validate --strict
+
+      - name: Install dependencies
+        uses: ramsey/composer-install@v3
+
       - name: Prepare environment
         run: |
           cp .env.example .env
@@ -39,7 +37,12 @@ jobs:
           touch database/database.sqlite
           sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
           sed -i 's#^DB_DATABASE=.*#DB_DATABASE=database/database.sqlite#' .env
+
+      - name: Run migrations
+        run: php artisan migrate:fresh --env=testing
+
       - name: Check routes
         run: php artisan route:list
+
       - name: Run tests
         run: php artisan test
