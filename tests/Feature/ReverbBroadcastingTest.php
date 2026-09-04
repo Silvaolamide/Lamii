@@ -39,7 +39,7 @@ class ReverbBroadcastingTest extends TestCase
         $event = new MessageSent($message);
 
         $this->assertSame('message.sent', $event->broadcastAs());
-        $this->assertSame('conversation.'.$conversation->id, $event->broadcastOn()[0]->name);
+        $this->assertSame('private-conversation.'.$conversation->id, $event->broadcastOn()[0]->name);
         $this->assertSame([
             'id' => $message->id,
             'conversation_id' => $conversation->id,
@@ -73,6 +73,8 @@ class ReverbBroadcastingTest extends TestCase
                 'socket_id' => '123.456',
             ])
             ->assertSuccessful();
+
+        $this->app['auth']->guard('web')->forgetUser();
 
         $this->actingAs($outsider)
             ->postJson('/broadcasting/auth', [
