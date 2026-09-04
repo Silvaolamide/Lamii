@@ -10,7 +10,7 @@ class ConnectionAcceptedNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(public Connection $connection) {}
+    public function __construct(public Connection $acceptedConnection) {}
 
     public function via(object $notifiable): array
     {
@@ -19,14 +19,14 @@ class ConnectionAcceptedNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
-        $otherUser = $this->connection->sender_id === $notifiable->id
-            ? $this->connection->recipient
-            : $this->connection->sender;
+        $otherUser = $this->acceptedConnection->sender_id === $notifiable->id
+            ? $this->acceptedConnection->recipient
+            : $this->acceptedConnection->sender;
 
         return [
             'type' => 'connection',
             'title' => 'You are connected',
-            'connection_id' => $this->connection->id,
+            'connection_id' => $this->acceptedConnection->id,
             'user_id' => $otherUser->id,
             'message' => 'You and '.$otherUser->name.' are now connected 🎉',
         ];
