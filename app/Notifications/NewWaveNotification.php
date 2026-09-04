@@ -10,7 +10,7 @@ class NewWaveNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(public Connection $connection) {}
+    public function __construct(public Connection $waveConnection) {}
 
     public function via(object $notifiable): array
     {
@@ -22,9 +22,9 @@ class NewWaveNotification extends Notification
         return [
             'type' => 'wave',
             'title' => 'New wave',
-            'connection_id' => $this->connection->id,
-            'sender_id' => $this->connection->sender_id,
-            'message' => $this->connection->sender->name.' waved at you 👋',
+            'connection_id' => $this->waveConnection->id,
+            'sender_id' => $this->waveConnection->sender_id,
+            'message' => $this->waveConnection->sender->name.' waved at you 👋',
         ];
     }
 }
