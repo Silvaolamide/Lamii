@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Broadcasting\ConversationChannel;
 use App\Events\MessageSent;
 use App\Models\Connection;
 use App\Models\Conversation;
@@ -50,7 +51,7 @@ class ReverbBroadcastingTest extends TestCase
         ], $event->broadcastWith());
     }
 
-    public function test_private_channel_authorization_requires_a_conversation_participant(): void
+    public function test_private_conversation_channel_rejects_non_participants(): void
     {
         $sender = $this->createUser('Sender');
         $recipient = $this->createUser('Recipient');
@@ -67,21 +68,32 @@ class ReverbBroadcastingTest extends TestCase
             'user_two_id' => $recipient->id,
         ]);
 
-        $this->actingAs($sender)
-            ->postJson('/broadcasting/auth', [
-                'channel_name' => 'private-conversation.'.$conversation->id,
-                'socket_id' => '123.456',
-            ])
-            ->assertSuccessful();
+        $channel = new ConversationChannel();
 
-        $this->app['auth']->guard('web')->forgetUser();
+        $this->assertTrue($channel->join($sender, $conversation));
+        $this->assertTrue($channel->join($recipient, $conversation));
+        $this->assertFalse($channel->join($outsider, $conversation));
+    }
 
-        $this->actingAs($outsider)
-            ->postJson('/broadcasting/auth', [
-                'channel_name' => 'private-conversation.'.$conversation->id,
-                'socket_id' => '123.456',
-            ])
-            ->assertForbidden();
+    public function test_private_conversation_channel_rejects_blocked_connections(): void
+    {
+        $sender = $this->createUser('Sender');
+        $recipient = $this->createUser('Recipient');
+
+        Connection::create([
+            'sender_id' => $sender->id,
+            'recipient_id' => $recipient->id,
+            'status' => Connection::ACCEPTED,
+        ]);
+
+        $conversation = Conversation::create([
+            'user_one_id' => $sender->id,
+            'user_two_id' => $recipient->id,
+        ]);
+
+        $sender->blocks()->create(['blocked_id' => $recipient->id]);
+
+        $this->assertFalse((new ConversationChannel())->join($sender, $conversation));
     }
 
     private function createUser(string $name): User
