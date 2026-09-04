@@ -27,17 +27,22 @@ jobs:
       - name: Install dependencies
         run: composer update laravel/reverb --with-dependencies --no-interaction --prefer-dist
 
-      - name: Commit refreshed Composer lock
+      - name: Persist refreshed Composer lock
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if git diff --quiet -- composer.lock; then
             echo 'Composer lock is already current.'
             exit 0
           fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add composer.lock
-          git commit -m 'ci: refresh Composer lock for Reverb dependency'
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          content=$(base64 -w0 composer.lock)
+          sha=$(gh api "repos/${GITHUB_REPOSITORY}/contents/composer.lock?ref=${GITHUB_REF_NAME}" --jq .sha)
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/composer.lock" \
+            -f message='ci: refresh Composer lock for Reverb dependency' \
+            -f branch="${GITHUB_REF_NAME}" \
+            -f sha="${sha}" \
+            -f content="${content}"
 
       - name: Validate Composer
         run: composer validate
