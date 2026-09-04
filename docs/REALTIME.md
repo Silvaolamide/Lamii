@@ -28,3 +28,7 @@ For horizontal scaling, enable Reverb scaling with Redis and ensure all applicat
 ## Failure behavior
 
 The browser marks the connection state as live/reconnecting and polls for missed messages every 10 seconds. The server remains authoritative; realtime delivery is an optimization over the normal message API.
+
+## Operational rule
+
+Never commit real Reverb secrets. Local values belong in `.env`; production values belong in the deployment secret store.
