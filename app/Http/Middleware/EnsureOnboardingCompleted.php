@@ -13,6 +13,13 @@ class EnsureOnboardingCompleted
         $user = $request->user();
 
         if ($user && ! $user->onboarding_completed) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Please complete onboarding before using this feature.',
+                    'code' => 'onboarding_required',
+                ], 403);
+            }
+
             return redirect()->route('onboarding.profile');
         }
 
