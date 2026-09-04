@@ -24,9 +24,6 @@ jobs:
           coverage: none
           tools: composer:2
 
-      - name: Validate Composer
-        run: composer validate
-
       - name: Install dependencies
         run: composer update laravel/reverb --with-dependencies --no-interaction --prefer-dist
 
@@ -42,6 +39,9 @@ jobs:
           git commit -m 'ci: refresh Composer lock for Reverb dependency'
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Validate Composer
+        run: composer validate
 
       - name: Prepare environment
         run: |
