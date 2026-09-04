@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Connection;
 use App\Models\User;
 use App\Notifications\NewWaveNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -27,31 +27,46 @@ class ApiV1NotificationTest extends TestCase
 
     public function test_notifications_can_be_listed_and_marked_read(): void
     {
-        $user = $this->user('notifications@example.com');
-        $notification = Notification::route('database', $user->id);
-        unset($notification);
+        $sender = $this->user('notification-sender@example.com');
+        $recipient = $this->user('notifications@example.com');
+        $connection = Connection::create([
+            'sender_id' => $sender->id,
+            'recipient_id' => $recipient->id,
+            'status' => Connection::PENDING,
+        ]);
 
-        $user->notify(new NewWaveNotification(
-            \App\Models\Connection::create([
-                'sender_id' => $user->id,
-                'recipient_id' => $user->id,
-                'status' => \App\Models\Connection::PENDING,
-            ])
-        ));
+        $recipient->notify(new NewWaveNotification($connection->load('sender')));
+        $id = $recipient->notifications()->first()->id;
 
-        $id = $user->notifications()->first()->id;
-
-        $this->actingAs($user)
+        $this->actingAs($recipient)
             ->getJson('/api/v1/notifications')
             ->assertOk()
             ->assertJsonPath('unread_count', 1)
             ->assertJsonStructure(['notifications']);
 
-        $this->actingAs($user)
+        $this->actingAs($recipient)
             ->postJson('/api/v1/notifications/'.$id.'/read')
             ->assertOk()
             ->assertJsonPath('ok', true);
 
-        $this->assertDatabaseHas('notifications', ['id' => $id, 'read_at' => now()->toDateTimeString()]);
+        $this->assertNotNull($recipient->notifications()->findOrFail($id)->read_at);
+    }
+
+    public function test_user_cannot_mark_another_users_notification_read(): void
+    {
+        $owner = $this->user('notification-owner@example.com');
+        $other = $this->user('notification-other@example.com');
+        $sender = $this->user('notification-sender2@example.com');
+        $connection = Connection::create([
+            'sender_id' => $sender->id,
+            'recipient_id' => $owner->id,
+            'status' => Connection::PENDING,
+        ]);
+        $owner->notify(new NewWaveNotification($connection->load('sender')));
+        $id = $owner->notifications()->first()->id;
+
+        $this->actingAs($other)
+            ->postJson('/api/v1/notifications/'.$id.'/read')
+            ->assertNotFound();
     }
 }
