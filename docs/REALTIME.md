@@ -29,6 +29,16 @@ For horizontal scaling, enable Reverb scaling with Redis and ensure all applicat
 
 The browser marks the connection state as live/reconnecting and polls for missed messages every 10 seconds. The server remains authoritative; realtime delivery is an optimization over the normal message API.
 
+## Deployment checklist
+
+- Set unique production `REVERB_APP_ID`, `REVERB_APP_KEY`, and `REVERB_APP_SECRET` values in the secret store.
+- Set the public `REVERB_HOST` and HTTPS `REVERB_SCHEME` values used by the browser.
+- Configure the WebSocket reverse proxy/load balancer for long-lived WebSocket connections.
+- Run `php artisan reverb:start` under a process supervisor.
+- Run a persistent queue worker for broadcast jobs.
+- Restrict `REVERB_ALLOWED_ORIGINS` to the real Lami domains; do not leave `*` in production.
+- If scaling horizontally, enable Reverb Redis scaling and verify shared Redis connectivity.
+
 ## Operational rule
 
 Never commit real Reverb secrets. Local values belong in `.env`; production values belong in the deployment secret store.
