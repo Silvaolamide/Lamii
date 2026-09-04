@@ -1,7 +1,7 @@
 {
   "name": "lamii/lamii",
   "type": "project",
-  "description": "Lamii helps you discover and connect with people around you in real time.",
+  "description": "Lami helps you discover and connect with people around you in real time.",
   "require": {
     "php": "^8.2",
     "laravel/framework": "^12.0",
