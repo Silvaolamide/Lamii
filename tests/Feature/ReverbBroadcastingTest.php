@@ -16,8 +16,8 @@ class ReverbBroadcastingTest extends TestCase
 
     public function test_message_sent_uses_a_private_conversation_channel(): void
     {
-        $sender = User::factory()->create();
-        $recipient = User::factory()->create();
+        $sender = $this->createUser('Sender');
+        $recipient = $this->createUser('Recipient');
 
         Connection::create([
             'sender_id' => $sender->id,
@@ -52,9 +52,9 @@ class ReverbBroadcastingTest extends TestCase
 
     public function test_private_channel_authorization_requires_a_conversation_participant(): void
     {
-        $sender = User::factory()->create();
-        $recipient = User::factory()->create();
-        $outsider = User::factory()->create();
+        $sender = $this->createUser('Sender');
+        $recipient = $this->createUser('Recipient');
+        $outsider = $this->createUser('Outsider');
 
         Connection::create([
             'sender_id' => $sender->id,
@@ -80,5 +80,16 @@ class ReverbBroadcastingTest extends TestCase
                 'socket_id' => '123.456',
             ])
             ->assertForbidden();
+    }
+
+    private function createUser(string $name): User
+    {
+        return User::create([
+            'name' => $name,
+            'email' => strtolower($name).'@example.test',
+            'password' => 'password',
+            'onboarding_completed' => true,
+            'is_discoverable' => true,
+        ]);
     }
 }
